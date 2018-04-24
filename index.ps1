@@ -26,11 +26,25 @@ while ($true) {
         $in = $reader.ReadToEnd() | ConvertFrom-Json
         $reader.Close()
 
-        # Run the function and get the result
-        $result = handle $in.context $in.payload
+        # Capture Debug and Verbose from function
+        $DebugPreference = 'Continue'
+        $VerbosePreference = 'Continue'
+        
+        # Run the function and get the result and output (contains all output streams)
+        $output = $($result = handle $in.context $in.payload) *>&1
+
+        # Contains Write-Host, Write-Information, Write-Verbose, Write-Debug
+        [System.Collections.Generic.List[String]]$stdout = $output | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] -and $_ -isnot [System.Management.Automation.WarningRecord] }
+
+        # Contains Write-Error, Write-Warning
+        [System.Collections.Generic.List[String]]$stderr = $output | ?{ $_ -is [System.Management.Automation.ErrorRecord] -or $_ -is [System.Management.Automation.WarningRecord] }
+
+        # Set back to default values
+        $DebugPreference = 'SilentlyContinue'
+        $VerbosePreference = 'SilentlyContinue'
 
         # Convert the returned data to JSON
-        $message = @{context=@{logs=@(); error=$null}; payload=$result} | ConvertTo-Json -Compress
+        $message = @{context=@{logs=@{stderr=$stderr; stdout=$stdout}; error=$null}; payload=$result} | ConvertTo-Json -Compress -Depth 3
     }
 
     $response.ContentType = 'application/json'
