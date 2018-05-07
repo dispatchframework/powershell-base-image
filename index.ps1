@@ -1,65 +1,117 @@
-
 . .\function\handler.ps1
 
-# Create a listener on port 8000
-$listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add('http://+:8080/')
-$listener.Start()
+# Takes HttpListenerRequest and returns request body
+function getRequestBody($request) {
+    [System.IO.StreamReader]$reader = [System.IO.StreamReader]::new($request.InputStream, $request.ContentEncoding)
+    $in = $reader.ReadToEnd() | ConvertFrom-Json
+    $reader.Close()
 
-'PowerShell Runtime API Listening ...'
+    return $in
+}
 
-# Run until you send a GET request to /end
-while ($true) {
-    $context = $listener.GetContext()
+function collectLogs($output) {
+    # Contains Write-Host, Write-Information, Write-Verbose, Write-Debug
+    [System.Collections.Generic.List[String]]$stdout = $output | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] -and $_ -isnot [System.Management.Automation.WarningRecord] }
+    if ($stdout -eq $null) {
+        $stdout = @()
+    }
 
-    # Capture the details about the request
-    $request = $context.Request
+    # Contains Write-Error, Write-Warning
+    [System.Collections.Generic.List[String]]$stderr = $output | ?{ $_ -is [System.Management.Automation.ErrorRecord] -or $_ -is [System.Management.Automation.WarningRecord] }
+    if ($stderr -eq $null) {
+        $stderr = @()
+    }
 
-    # Setup a place to deliver a response
-    $response = $context.Response
+    return @{stderr=$stderr; stdout=$stdout}
+}
 
-    if ($request.Url -match '/healthz$') {
-        $message = '{}';
-    } else {
-        # Get request body
-        [System.IO.StreamReader]$reader = [System.IO.StreamReader]::new($request.InputStream, $request.ContentEncoding)
-        $in = $reader.ReadToEnd() | ConvertFrom-Json
-        $reader.Close()
+# Standard error message displayed when exception encountered
+function getErrorMessage($err) {
+    $format = "{0}`n" + 
+              "{1}`n" +
+              "+    CategoryInfo          : {2}`n" +
+              "+    FullyQualifiedErrorId : {3}`n"
+    $fields = $err.Exception.Message,
+              $err.InvocationInfo.PositionMessage,
+              $err.CategoryInfo.ToString(),
+              $err.FullyQualifiedErrorId
 
-        # Capture Debug and Verbose from function
-        $DebugPreference = 'Continue'
-        $VerbosePreference = 'Continue'
-        
+    $errorMessage = $format -f $fields
+
+    return $errorMessage.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
+}
+
+function applyFunction($in, $handle) {
+    # Capture Debug and Verbose from function
+    $DebugPreference = 'Continue'
+    $VerbosePreference = 'Continue'
+    
+    try {
         # Run the function and get the result and output (contains all output streams)
-        $output = $($result = handle $in.context $in.payload) *>&1
-
-        # Contains Write-Host, Write-Information, Write-Verbose, Write-Debug
-        [System.Collections.Generic.List[String]]$stdout = $output | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] -and $_ -isnot [System.Management.Automation.WarningRecord] }
-
-        # Contains Write-Error, Write-Warning
-        [System.Collections.Generic.List[String]]$stderr = $output | ?{ $_ -is [System.Management.Automation.ErrorRecord] -or $_ -is [System.Management.Automation.WarningRecord] }
-
+        $output = $($result = & $handle $in.context $in.payload) *>&1
+    } catch {
+        $err = $_
+        [System.Collections.Generic.List[String]]$stderr = getErrorMessage $err
+    } finally {
         # Set back to default values
         $DebugPreference = 'SilentlyContinue'
         $VerbosePreference = 'SilentlyContinue'
 
-        # Convert the returned data to JSON
-        $message = @{context=@{logs=@{stderr=$stderr; stdout=$stdout}; error=$null}; payload=$result} | ConvertTo-Json -Compress -Depth 3
+        $logs = collectLogs $output
+
+        # If encounter error, append error message to stderr
+        if ($err -ne $null) {
+            $logs.stderr += $stderr
+        }
+
+        $r = @{context=@{logs=$logs; error=$err}; payload=$result}
     }
 
-    $response.ContentType = 'application/json'
-
-    # Convert the data to UTF8 bytes
-    [byte[]]$buffer = [System.Text.Encoding]::UTF8.GetBytes($message)
-
-    # Set length of response
-    $response.ContentLength64 = $buffer.length
-
-    # Write response out and close
-    $output = $response.OutputStream
-    $output.Write($buffer, 0, $buffer.length)
-    $output.Close()
+    return $r
 }
 
-#Terminate the listener
-$listener.Stop()
+# If this script is not imported
+if ($MyInvocation.Line.Trim() -notmatch '^\.\s+') {
+    # Create a listener on port 8000
+    $listener = New-Object System.Net.HttpListener
+    $listener.Prefixes.Add('http://+:8080/')
+    $listener.Start()
+
+    'PowerShell Runtime API Listening ...'
+
+    # Run until you send a GET request to /end
+    while ($true) {
+        $context = $listener.GetContext()
+
+        # Capture the details about the request
+        $request = $context.Request
+
+        # Setup a place to deliver a response
+        $response = $context.Response
+
+        if ($request.Url -match '/healthz$') {
+            $message = '{}';
+        } else {
+            $in = getRequestBody $request
+            $r = applyFunction $in handle
+
+            $message = $r | ConvertTo-Json -Compress -Depth 3
+        }
+
+        $response.ContentType = 'application/json'
+
+        # Convert the data to UTF8 bytes
+        [byte[]]$buffer = [System.Text.Encoding]::UTF8.GetBytes($message)
+
+        # Set length of response
+        $response.ContentLength64 = $buffer.length
+
+        # Write response out and close
+        $output = $response.OutputStream
+        $output.Write($buffer, 0, $buffer.length)
+        $output.Close()
+    }
+
+    #Terminate the listener
+    $listener.Stop()
+}

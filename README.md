@@ -1,7 +1,7 @@
 # powershell-base-image
 PowerShell language support for Dispatch
 
-Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/): `dispatchframework/powershell-base:0.0.4`
+Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/): `dispatchframework/powershell-base:0.0.5`
 
 ## Usage
 
@@ -11,7 +11,7 @@ You need a recent version of Dispatch [installed in your Kubernetes cluster, Dis
 
 To add the base-image to Dispatch:
 ```bash
-$ dispatch create base-image powershell-base dispatchframework/powershell-base:0.0.4
+$ dispatch create base-image powershell-base dispatchframework/powershell-base:0.0.5
 ```
 
 Make sure the base-image status is `READY` (it normally goes from `INITIALIZED` to `READY`):
