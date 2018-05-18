@@ -64,10 +64,51 @@ Describe 'index tests' {
                 $err = $_
             }
 
-            [System.Collections.Generic.List[String]]$errorMessage = getErrorMessage($err)
+            $errorMessage = getErrorMessage $err
 
             $errorMessage | Should -BeOfType [String]
             $errorMessage | Should -Contain $err.Exception.Message
+        }
+    }
+
+    Context 'processRequest' {
+        It 'Should return a SystemError with invalid json' {
+            $contentEncoding = [System.Text.Encoding]::UTF8
+            $message = $contentEncoding.GetBytes("{")
+
+            $inputStream = New-Object System.IO.MemoryStream
+            $inputStream.Write($message, 0 , $message.Length)
+            $inputStream.Seek(0, [System.IO.SeekOrigin]::Begin)
+
+            $request = @{InputStream=$inputStream; ContentEncoding=$contentEncoding}
+
+            $r = processRequest $request
+
+            $r.payload | Should -BeExactly $null
+            $r.context.error.type | Should -BeExactly $SYSTEM_ERROR
+            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
+            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
+            $r.context.logs.stdout | Should -BeExactly @()
+        }
+
+        It 'Should return a SystemError with closed input stream' {
+            $contentEncoding = [System.Text.Encoding]::UTF8
+            $message = $contentEncoding.GetBytes("{}")
+
+            $inputStream = New-Object System.IO.MemoryStream
+            $inputStream.Write($message, 0 , $message.Length)
+            $inputStream.Seek(0, [System.IO.SeekOrigin]::Begin)
+            $inputStream.Close()
+
+            $request = @{InputStream=$inputStream; ContentEncoding=$contentEncoding}
+
+            $r = processRequest $request
+
+            $r.payload | Should -BeExactly $null
+            $r.context.error.type | Should -BeExactly $SYSTEM_ERROR
+            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
+            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
+            $r.context.logs.stdout | Should -BeExactly @()
         }
     }
 
@@ -96,21 +137,44 @@ Describe 'index tests' {
             $r.context.logs.stdout | Should -BeExactly @()
         }
 
-        It 'Should return an error with fail function' {
+        It 'Should return a FunctionError with fail function' {
             function fail($context, $payload) {
                 [System.IO.File]::ReadAllText('FileNotFoundException.txt')
             }
 
-            { fail } | Should -Throw
+            { fail $null $null } | Should -Throw
 
             $in = @{context=$null; payload=$null}
 
             $r = applyFunction $in fail
-            $errorMessage = getErrorMessage $r.context.error
 
             $r.payload | Should -BeExactly $null
-            $r.context.error.FullyQualifiedErrorId | Should -BeExactly "FileNotFoundException"
-            $r.context.logs.stderr | Should -BeExactly $errorMessage
+            $r.context.error.type | Should -BeExactly $FUNCTION_ERROR
+            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
+            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
+            $r.context.logs.stdout | Should -BeExactly @()
+        }
+
+        It 'Should return an InputError with lower function' {
+            function lower($context, $payload) {
+                if ($payload.GetType() -ne [String]) {
+                    throw [System.ArgumentException]::new("payload is not of type string")
+                }
+                return $payload.ToLower()
+            }
+
+            { lower $null 0 } | Should -Throw
+            { lower $null "" } | Should -Not -Throw
+
+            $in = @{context=$null; payload=0}
+
+            $r = applyFunction $in lower
+
+            $r.payload | Should -BeExactly $null
+            $r.context.error.type | Should -BeExactly $INPUT_ERROR
+            $r.context.error.message | Should -BeExactly "payload is not of type string"
+            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
+            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
             $r.context.logs.stdout | Should -BeExactly @()
         }
 

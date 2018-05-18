@@ -1,5 +1,9 @@
 . .\function\handler.ps1
 
+Set-Variable INPUT_ERROR -option Constant -value "InputError"
+Set-Variable FUNCTION_ERROR -option Constant -value "FunctionError"
+Set-Variable SYSTEM_ERROR -option Constant -value "SystemError"
+
 # Takes HttpListenerRequest and returns request body
 function getRequestBody($request) {
     [System.IO.StreamReader]$reader = [System.IO.StreamReader]::new($request.InputStream, $request.ContentEncoding)
@@ -27,16 +31,8 @@ function collectLogs($output) {
 
 # Standard error message displayed when exception encountered
 function getErrorMessage($err) {
-    $format = "{0}`n" + 
-              "{1}`n" +
-              "+    CategoryInfo          : {2}`n" +
-              "+    FullyQualifiedErrorId : {3}`n"
-    $fields = $err.Exception.Message,
-              $err.InvocationInfo.PositionMessage,
-              $err.CategoryInfo.ToString(),
-              $err.FullyQualifiedErrorId
-
-    $errorMessage = $format -f $fields
+    $errorMessage = $err | Out-String
+    $errorMessage = $errorMessage.Trim()
 
     return $errorMessage.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
 }
@@ -49,9 +45,14 @@ function applyFunction($in, $handle) {
     try {
         # Run the function and get the result and output (contains all output streams)
         $output = $($result = & $handle $in.context $in.payload) *>&1
+    } catch [System.ArgumentException] {
+        $stderr = getErrorMessage $_
+        $stacktrace = $_.ScriptStackTrace.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
+        $err = @{type=$INPUT_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace}
     } catch {
-        $err = $_
-        [System.Collections.Generic.List[String]]$stderr = getErrorMessage $err
+        $stderr = getErrorMessage $_
+        $stacktrace = $_.ScriptStackTrace.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
+        $err = @{type=$FUNCTION_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace}
     } finally {
         # Set back to default values
         $DebugPreference = 'SilentlyContinue'
@@ -68,6 +69,20 @@ function applyFunction($in, $handle) {
     }
 
     return $r
+}
+
+function processRequest($request) {
+    try {
+        $in = getRequestBody $request
+    } catch {
+        $stderr = getErrorMessage $_
+        $stacktrace = $_.ScriptStackTrace.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
+        $err = @{type=$SYSTEM_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace}
+
+        return @{context=@{logs=@{stderr=$stderr; stdout=@()}; error=$err}; payload=$null}
+    }
+
+    return applyFunction $in handle
 }
 
 # If this script is not imported
@@ -92,8 +107,7 @@ if ($MyInvocation.Line.Trim() -notmatch '^\.\s+') {
         if ($request.Url -match '/healthz$') {
             $message = '{}';
         } else {
-            $in = getRequestBody $request
-            $r = applyFunction $in handle
+            $r = processRequest $request
 
             $message = $r | ConvertTo-Json -Compress -Depth 3
         }
