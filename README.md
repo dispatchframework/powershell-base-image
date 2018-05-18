@@ -1,7 +1,7 @@
 # powershell-base-image
 PowerShell language support for Dispatch
 
-Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/): `dispatchframework/powershell-base:0.0.5`
+Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/): `dispatchframework/powershell-base:0.0.6`
 
 ## Usage
 
@@ -11,7 +11,7 @@ You need a recent version of Dispatch [installed in your Kubernetes cluster, Dis
 
 To add the base-image to Dispatch:
 ```bash
-$ dispatch create base-image powershell-base dispatchframework/powershell-base:0.0.5
+$ dispatch create base-image powershell-base dispatchframework/powershell-base:0.0.6
 ```
 
 Make sure the base-image status is `READY` (it normally goes from `INITIALIZED` to `READY`):
@@ -100,3 +100,35 @@ $ dispatch exec --json --input '{"url": "https://github.com/vmware/dispatch"}' -
     "tags": []
 }
 ```
+
+## Error Handling
+
+There are three types of errors that can be thrown when invoking a function:
+* `InputError`
+* `FunctionError`
+* `SystemError`
+
+`SystemError` represents an error in the Dispatch infrastructure. `InputError` represents an error in the input detected either early in the function itself or through input schema validation. `FunctionError` represents an error in the function logic or an output schema validation error.
+
+Functions themselves can either throw `InputError` or `FunctionError`
+
+### Input Validation
+
+For Powershell, the following exceptions thrown from the function are considered `InputError`:
+* **`System.ArgumentException`**
+
+All other exceptions thrown from the function are considered `FunctionError`.
+
+To validate input in the function body:
+```powershell
+function lower($context, $payload) {
+    if ($payload.GetType() -ne [String]) {
+        throw [System.ArgumentException]::new("payload is not of type string")
+    }
+    return $payload.ToLower()
+}
+```
+
+### Note
+
+Since **`System.ArgumentException`** is considered an `InputError`, functions should not throw it unless explicitly thrown due to an input validation error. Functions should catch and handle **`System.ArgumentException`** accordingly if it should not be classified as an `InputError`. 
