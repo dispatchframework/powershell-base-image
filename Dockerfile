@@ -13,9 +13,7 @@ RUN mv /powershell/PSDepend/0.1.64/PSDependScripts/Noop.ps1 /powershell/PSDepend
 
 
 ## base image
-FROM vmware/photon2:20180302
-
-WORKDIR /root/
+FROM vmware/photon2:20180424
 
 RUN tdnf install -y powershell-6.0.1-1.ph2
 COPY --from=builder /powershell/ /root/.local/share/powershell/Modules/
@@ -29,10 +27,10 @@ LABEL io.dispatchframework.imageTemplate="${IMAGE_TEMPLATE}" \
 COPY image-template ${IMAGE_TEMPLATE}/
 COPY function-template ${FUNCTION_TEMPLATE}/
 
-ENV FUNCTION_MODULE=/root/function/handler.ps1 PORT=8080
+ENV WORKDIR=/root/function PORT=8080
 EXPOSE ${PORT}
+WORKDIR ${WORKDIR}
 
-COPY ./function/handler.ps1 ${FUNCTION_MODULE}
-COPY ./index.ps1 .
+COPY ./index.ps1 /root
 
-CMD ["pwsh", "-NoLogo", "-File", "index.ps1"]
+CMD ["pwsh", "-NoLogo", "-File", "/root/index.ps1"]

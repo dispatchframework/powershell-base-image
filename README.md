@@ -1,7 +1,7 @@
 # powershell-base-image
 PowerShell language support for Dispatch
 
-Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/): `dispatchframework/powershell-base:0.0.6`
+Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/): `dispatchframework/powershell-base:0.0.7`
 
 ## Usage
 
@@ -11,7 +11,7 @@ You need a recent version of Dispatch [installed in your Kubernetes cluster, Dis
 
 To add the base-image to Dispatch:
 ```bash
-$ dispatch create base-image powershell-base dispatchframework/powershell-base:0.0.6
+$ dispatch create base-image powershell-base dispatchframework/powershell-base:0.0.7
 ```
 
 Make sure the base-image status is `READY` (it normally goes from `INITIALIZED` to `READY`):
@@ -45,7 +45,7 @@ $ dispatch get image powershell-mylibs
 
 Using the Powershell base-image, you can create Dispatch functions from Powershell source files. The file can require any libraries from the image (see above).
 
-The only requirement is: a function called **`handle`** must be defined that accepts 2 arguments (`context` and `payload`), for example:  
+The only requirement is: a function must be defined that accepts 2 arguments (`context` and `payload`), for example:  
 ```bash
 $ cat ./demo.ps1
 ```
@@ -59,7 +59,8 @@ function handle($context, $payload) {
 ```
 
 ```bash
-$ dispatch create function powershell-mylibs github ./demo.ps1
+$ dispatch create function powershell-mylibs ./demo.ps1 --image=github 
+    --handler=demo.ps1::handle
 ```
 
 Make sure the function status is `READY` (it normally goes from `INITIALIZED` to `READY`):
