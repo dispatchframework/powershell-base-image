@@ -1,4 +1,6 @@
-. .\function\handler.ps1
+$scriptFile, $func = $Env:HANDLER.split('::')
+
+. $PSScriptRoot\function\$scriptFile
 
 Set-Variable INPUT_ERROR -option Constant -value "InputError"
 Set-Variable FUNCTION_ERROR -option Constant -value "FunctionError"
@@ -82,7 +84,7 @@ function processRequest($request) {
         return @{context=@{logs=@{stderr=$stderr; stdout=@()}; error=$err}; payload=$null}
     }
 
-    return applyFunction $in handle
+    return applyFunction $in $func
 }
 
 # If this script is not imported

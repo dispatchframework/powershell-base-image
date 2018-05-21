@@ -1,7 +1,9 @@
 ARG IMAGE
 FROM ${IMAGE}
 
-ARG FUNCTION_SRC=function.txt
+ARG HANDLER=handler.ps1::handle
+ENV HANDLER=$HANDLER
 
-# FUNCTION_MODULE env var is set in the base-image
-COPY ${FUNCTION_SRC} ${FUNCTION_MODULE}
+WORKDIR ${WORKDIR}
+
+COPY . .
