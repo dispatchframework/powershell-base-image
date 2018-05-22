@@ -1,3 +1,4 @@
+$env:HANDLER = "handler.ps1::handle"
 . .\index.ps1
 
 Describe 'index tests' {
