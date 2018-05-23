@@ -1,4 +1,9 @@
-$scriptFile, $func = $Env:HANDLER.split('::')
+Param(
+    [Parameter(Mandatory=$True, Position=0)]
+    [string]$handler
+)
+
+$scriptFile, $func = $handler.split('::')
 
 . $PSScriptRoot\function\$scriptFile
 

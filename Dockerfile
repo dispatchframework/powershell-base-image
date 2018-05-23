@@ -33,4 +33,4 @@ WORKDIR ${WORKDIR}
 
 COPY ./index.ps1 /root
 
-CMD ["pwsh", "-NoLogo", "-File", "/root/index.ps1"]
+CMD pwsh -NoLogo -File /root/index.ps1 $(cat /tmp/handler)
