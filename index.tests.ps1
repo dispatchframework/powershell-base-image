@@ -1,4 +1,4 @@
-. .\index.ps1
+. .\index.ps1 handler.ps1::handle
 
 Describe 'index tests' {
     Context 'getRequestBody' {
