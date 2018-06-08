@@ -27,6 +27,8 @@ LABEL io.dispatchframework.imageTemplate="${IMAGE_TEMPLATE}" \
 COPY image-template ${IMAGE_TEMPLATE}/
 COPY function-template ${FUNCTION_TEMPLATE}/
 
+COPY validator /root/validator/
+
 ENV WORKDIR=/root/function PORT=8080
 EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
