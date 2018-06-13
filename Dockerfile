@@ -35,4 +35,7 @@ WORKDIR ${WORKDIR}
 
 COPY ./index.ps1 /root
 
+# OpenFaaS readiness check depends on this file
+RUN touch /tmp/.lock
+
 CMD pwsh -NoLogo -File /root/index.ps1 $(cat /tmp/handler)

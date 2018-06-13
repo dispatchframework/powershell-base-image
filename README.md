@@ -1,7 +1,7 @@
 # powershell-base-image
 PowerShell language support for Dispatch
 
-Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/): `dispatchframework/powershell-base:0.0.9`
+Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/powershell-base/)
 
 ## Usage
 
@@ -11,7 +11,7 @@ You need a recent version of Dispatch [installed in your Kubernetes cluster, Dis
 
 To add the base-image to Dispatch:
 ```bash
-$ dispatch create base-image powershell-base dispatchframework/powershell-base:0.0.9
+$ dispatch create base-image powershell-base dispatchframework/powershell-base:<tag>
 ```
 
 Make sure the base-image status is `READY` (it normally goes from `INITIALIZED` to `READY`):
@@ -45,7 +45,7 @@ $ dispatch get image powershell-mylibs
 
 Using the Powershell base-image, you can create Dispatch functions from Powershell source files. The file can require any libraries from the image (see above).
 
-The only requirement is: a function must be defined that accepts 2 arguments (`context` and `payload`), for example:  
+The only requirement is: a function must be defined that accepts 2 arguments (`context` and `payload`), for example:
 ```bash
 $ cat ./demo.ps1
 ```
@@ -59,7 +59,7 @@ function handle($context, $payload) {
 ```
 
 ```bash
-$ dispatch create function powershell-mylibs ./demo.ps1 --image=github 
+$ dispatch create function powershell-mylibs ./demo.ps1 --image=github
     --handler=demo.ps1::handle
 ```
 
@@ -132,4 +132,4 @@ function lower($context, $payload) {
 
 ### Note
 
-Since **`System.ArgumentException`** is considered an `InputError`, functions should not throw it unless explicitly thrown due to an input validation error. Functions should catch and handle **`System.ArgumentException`** accordingly if it should not be classified as an `InputError`. 
+Since **`System.ArgumentException`** is considered an `InputError`, functions should not throw it unless explicitly thrown due to an input validation error. Functions should catch and handle **`System.ArgumentException`** accordingly if it should not be classified as an `InputError`.
