@@ -59,7 +59,7 @@ function handle($context, $payload) {
 ```
 
 ```bash
-$ dispatch create function powershell-mylibs ./demo.ps1 --image=github
+$ dispatch create function github ./demo.ps1 --image=powershell-mylibs
     --handler=demo.ps1::handle
 ```
 
