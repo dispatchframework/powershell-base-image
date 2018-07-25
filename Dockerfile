@@ -15,11 +15,12 @@ RUN mv /powershell/PSDepend/0.1.64/PSDependScripts/Noop.ps1 /powershell/PSDepend
 ## base image
 FROM vmware/photon2:20180424
 
-RUN tdnf install -y powershell-6.0.1-1.ph2
+RUN tdnf install -y powershell-6.0.1-1.ph2 gzip tar
 COPY --from=builder /powershell/ /root/.local/share/powershell/Modules/
 
 ARG IMAGE_TEMPLATE=/image-template
 ARG FUNCTION_TEMPLATE=/function-template
+ARG servers=1
 
 LABEL io.dispatchframework.imageTemplate="${IMAGE_TEMPLATE}" \
       io.dispatchframework.functionTemplate="${FUNCTION_TEMPLATE}"
@@ -29,13 +30,16 @@ COPY function-template ${FUNCTION_TEMPLATE}/
 
 COPY validator /root/validator/
 
-ENV WORKDIR=/root/function PORT=8080
+ENV WORKDIR=/root/function PORT=8080 SERVERS=$servers
 EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
 
 COPY ./index.ps1 /root
 
+RUN curl -L https://github.com/dispatchframework/funky/releases/download/0.1.1/funky0.1.1.linux-amd64.tgz -o funky0.1.1.linux-amd64.tgz
+RUN tar -xzf funky0.1.1.linux-amd64.tgz
+
 # OpenFaaS readiness check depends on this file
 RUN touch /tmp/.lock
 
-CMD pwsh -NoLogo -File /root/index.ps1 $(cat /tmp/handler)
+CMD SERVER_CMD="pwsh -NoLogo -File /root/index.ps1 $(cat /tmp/handler)" ./funky

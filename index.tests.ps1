@@ -20,57 +20,6 @@ Describe 'index tests' {
         }
     }
 
-    Context 'collectLogs' {
-        It 'Should separate into stdout and stderr' {
-            function logger() {
-                Write-Host "Write-Host message"
-                Write-Information "Write-Information message"
-                Write-Verbose "Write-Verbose message"
-                Write-Debug "Write-Debug message"
-                Write-Error "Write-Error message"
-                Write-Warning "Write-Warning message"
-            }
-
-            $DebugPreference = 'Continue'
-            $VerbosePreference = 'Continue'
-
-            $output = logger *>&1
-
-            $DebugPreference = 'SilentlyContinue'
-            $VerbosePreference = 'SilentlyContinue'
-
-            $logs = collectLogs $output
-
-            $stderr = @("Write-Error message", "Write-Warning message")
-            $stdout = @("Write-Host message", "Write-Information message", "Write-Verbose message", "Write-Debug message")
-
-            $logs.stderr | Should -BeExactly $stderr
-            $logs.stdout | Should -BeExactly $stdout
-        }
-
-        It 'Should handle empty output' {
-            $logs = collectLogs $null
-
-            $logs.stderr | Should -BeExactly @()
-            $logs.stdout | Should -BeExactly @()
-        } 
-    }
-
-    Context 'getErrorMessage' {
-        It 'Should return error message as an array' {
-            try {
-                [System.IO.File]::ReadAllText('FileNotFoundException.txt')
-            } catch {
-                $err = $_
-            }
-
-            $errorMessage = getErrorMessage $err
-
-            $errorMessage | Should -BeOfType [String]
-            $errorMessage | Should -Contain $err.Exception.Message
-        }
-    }
-
     Context 'processRequest' {
         It 'Should return a SystemError with invalid json' {
             $contentEncoding = [System.Text.Encoding]::UTF8
@@ -84,11 +33,8 @@ Describe 'index tests' {
 
             $r = processRequest $request
 
-            $r.payload | Should -BeExactly $null
-            $r.context.error.type | Should -BeExactly $SYSTEM_ERROR
-            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
-            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
-            $r.context.logs.stdout | Should -BeExactly @()
+            $r.type | Should -BeExactly $SYSTEM_ERROR
+            $r.stacktrace.Count | Should -BeGreaterThan 0
         }
 
         It 'Should return a SystemError with closed input stream' {
@@ -104,11 +50,8 @@ Describe 'index tests' {
 
             $r = processRequest $request
 
-            $r.payload | Should -BeExactly $null
-            $r.context.error.type | Should -BeExactly $SYSTEM_ERROR
-            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
-            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
-            $r.context.logs.stdout | Should -BeExactly @()
+            $r.type | Should -BeExactly $SYSTEM_ERROR
+            $r.stacktrace.Count | Should -BeGreaterThan 0
         }
     }
 
@@ -131,10 +74,7 @@ Describe 'index tests' {
             
             $r = applyFunction $in hello
 
-            $r.payload | Should -BeExactly "Hello, Jon from Winterfell"
-            $r.context.error | Should -BeExactly $null
-            $r.context.logs.stderr | Should -BeExactly @()
-            $r.context.logs.stdout | Should -BeExactly @()
+            $r | Should -BeExactly "Hello, Jon from Winterfell"
         }
 
         It 'Should return a FunctionError with fail function' {
@@ -148,11 +88,8 @@ Describe 'index tests' {
 
             $r = applyFunction $in fail
 
-            $r.payload | Should -BeExactly $null
-            $r.context.error.type | Should -BeExactly $FUNCTION_ERROR
-            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
-            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
-            $r.context.logs.stdout | Should -BeExactly @()
+            $r.type | Should -BeExactly $FUNCTION_ERROR
+            $r.stacktrace.Count | Should -BeGreaterThan 0
         }
 
         It 'Should return an InputError with lower function' {
@@ -170,40 +107,9 @@ Describe 'index tests' {
 
             $r = applyFunction $in lower
 
-            $r.payload | Should -BeExactly $null
-            $r.context.error.type | Should -BeExactly $INPUT_ERROR
-            $r.context.error.message | Should -BeExactly "payload is not of type string"
-            $r.context.error.stacktrace.Count | Should -BeGreaterThan 0
-            $r.context.logs.stderr.Count | Should -BeGreaterThan 0
-            $r.context.logs.stdout | Should -BeExactly @()
-        }
-
-        It 'Should return correct logs and result with logger function' {
-            function logger() {
-                Write-Host "Write-Host message"
-                Write-Information "Write-Information message"
-                Write-Verbose "Write-Verbose message"
-                Write-Debug "Write-Debug message"
-                Write-Error "Write-Error message"
-                Write-Warning "Write-Warning message"
-
-                "Simple text return"
-                Write-Output "Write-Output message"
-                return "Explicit return"
-            }
-
-            $in = @{context=$null; payload=$null}
-
-            $r = applyFunction $in logger
-
-            $result = @("Simple text return", "Write-Output message", "Explicit return")
-            $stderr = @("Write-Error message", "Write-Warning message")
-            $stdout = @("Write-Host message", "Write-Information message", "Write-Verbose message", "Write-Debug message")
-
-            $r.payload | Should -BeExactly $result
-            $r.context.error | Should -BeExactly $null
-            $r.context.logs.stderr | Should -BeExactly $stderr
-            $r.context.logs.stdout | Should -BeExactly $stdout
+            $r.type | Should -BeExactly $INPUT_ERROR
+            $r.message | Should -BeExactly "payload is not of type string"
+            $r.stacktrace.Count | Should -BeGreaterThan 0
         }
     }
 }
