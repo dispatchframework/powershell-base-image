@@ -31,10 +31,14 @@ Describe 'index tests' {
 
             $request = @{InputStream=$inputStream; ContentEncoding=$contentEncoding}
 
-            $r = processRequest $request
+            try {
+                $r = processRequest $request
+            } catch [DispatchException] {
+                $r = $_.Exception.Error
+            }
 
             $r.type | Should -BeExactly $SYSTEM_ERROR
-            $r.stacktrace.Count | Should -BeGreaterThan 0
+                $r.stacktrace.Count | Should -BeGreaterThan 0
         }
 
         It 'Should return a SystemError with closed input stream' {
@@ -48,7 +52,11 @@ Describe 'index tests' {
 
             $request = @{InputStream=$inputStream; ContentEncoding=$contentEncoding}
 
-            $r = processRequest $request
+            try {
+                $r = processRequest $request
+            } catch [DispatchException] {
+                $r = $_.Exception.Error
+            }
 
             $r.type | Should -BeExactly $SYSTEM_ERROR
             $r.stacktrace.Count | Should -BeGreaterThan 0
@@ -71,7 +79,7 @@ Describe 'index tests' {
             }
 
             $in = @{context=$null; payload=@{name="Jon"; place="Winterfell"}}
-            
+
             $r = applyFunction $in hello
 
             $r | Should -BeExactly "Hello, Jon from Winterfell"
@@ -86,7 +94,11 @@ Describe 'index tests' {
 
             $in = @{context=$null; payload=$null}
 
-            $r = applyFunction $in fail
+            try {
+                $r = applyFunction $in fail
+            } catch [DispatchException] {
+                $r = $_.Exception.Error
+            }
 
             $r.type | Should -BeExactly $FUNCTION_ERROR
             $r.stacktrace.Count | Should -BeGreaterThan 0
@@ -105,7 +117,11 @@ Describe 'index tests' {
 
             $in = @{context=$null; payload=0}
 
-            $r = applyFunction $in lower
+            try {
+                $r = applyFunction $in lower
+            } catch [DispatchException] {
+                $r = $_.Exception.Error
+            }
 
             $r.type | Should -BeExactly $INPUT_ERROR
             $r.message | Should -BeExactly "payload is not of type string"

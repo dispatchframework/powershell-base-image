@@ -20,6 +20,14 @@ function getRequestBody($request) {
     return $in
 }
 
+class DispatchException : System.Exception {
+    $Error
+
+    DispatchException($Error) : base () {
+        $this.Error = $Error
+    }
+}
+
 function applyFunction($in, $handle) {
     # Capture Debug and Verbose from function
     $DebugPreference = 'Continue'
@@ -30,10 +38,10 @@ function applyFunction($in, $handle) {
         $result = & $handle $in.context $in.payload
     } catch [System.ArgumentException] {
         $stacktrace = $_.ScriptStackTrace.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
-        return @{type=$INPUT_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace}
+        throw [DispatchException]::new(@{type=$INPUT_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace})
     } catch {
         $stacktrace = $_.ScriptStackTrace.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
-        return @{type=$FUNCTION_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace}
+        throw [DispatchException]::new(@{type=$FUNCTION_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace})
     } finally {
         # Set back to default values
         $DebugPreference = 'SilentlyContinue'
@@ -50,9 +58,7 @@ function processRequest($request) {
         $in = getRequestBody $request
     } catch {
         $stacktrace = $_.ScriptStackTrace.Split([Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries)
-        $err = @{type=$SYSTEM_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace}
-
-        return $err
+        throw [DispatchException]::new(@{type=$SYSTEM_ERROR; message=$_.Exception.Message; stacktrace=$stacktrace})
     }
 
     return applyFunction $in $func
@@ -84,11 +90,13 @@ if ($MyInvocation.Line.Trim() -notmatch '^\.\s+') {
         if ($request.Url -match '/healthz$') {
             $message = '{}';
         } else {
-            $r = processRequest $request
-
-            if ($r.ContainsKey('type') -and ($r."type" == $INPUT_ERROR -or $r."type" == $FUNCTION_ERROR -or $r."type" == $SYSTEM_ERROR)) {
-                $response.StatusCode=500
+            try {
+                $r = processRequest $request
+            } catch [DispatchException] {
+                $response.StatusCode = 500
+                $r = $_.Exception.Error
             }
+
             $message = $r | ConvertTo-Json -Compress -Depth 3
         }
 
