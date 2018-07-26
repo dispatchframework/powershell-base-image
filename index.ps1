@@ -86,7 +86,7 @@ if ($MyInvocation.Line.Trim() -notmatch '^\.\s+') {
         } else {
             $r = processRequest $request
 
-            if ($r.ContainsKey('stacktrace')) {
+            if ($r.ContainsKey('type') -and ($r."type" == $INPUT_ERROR -or $r."type" == $FUNCTION_ERROR -or $r."type" == $SYSTEM_ERROR)) {
                 $response.StatusCode=500
             }
             $message = $r | ConvertTo-Json -Compress -Depth 3

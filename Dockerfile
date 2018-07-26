@@ -30,14 +30,14 @@ COPY function-template ${FUNCTION_TEMPLATE}/
 
 COPY validator /root/validator/
 
-ENV WORKDIR=/root/function PORT=8080 SERVERS=$servers
+ENV WORKDIR=/root/function PORT=8080 SERVERS=$servers FUNKY_VERSION=0.1.1
 EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
 
 COPY ./index.ps1 /root
 
-RUN curl -L https://github.com/dispatchframework/funky/releases/download/0.1.1/funky0.1.1.linux-amd64.tgz -o funky0.1.1.linux-amd64.tgz
-RUN tar -xzf funky0.1.1.linux-amd64.tgz
+RUN curl -L https://github.com/dispatchframework/funky/releases/download/${FUNKY_VERSION}/funky${FUNKY_VERSION}.linux-amd64.tgz -o funky${FUNKY_VERSION}.linux-amd64.tgz
+RUN tar -xzf funky${FUNKY_VERSION}.linux-amd64.tgz
 
 # OpenFaaS readiness check depends on this file
 RUN touch /tmp/.lock
