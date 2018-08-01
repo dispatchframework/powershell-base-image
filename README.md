@@ -133,3 +133,25 @@ function lower($context, $payload) {
 ### Note
 
 Since **`System.ArgumentException`** is considered an `InputError`, functions should not throw it unless explicitly thrown due to an input validation error. Functions should catch and handle **`System.ArgumentException`** accordingly if it should not be classified as an `InputError`.
+
+## Running Tests
+
+Unit tests are written using `Pester` for both `index.ps1` and `validator.ps1`.
+
+To run tests, ensure you have all the required dependencies (with `PSDepend` as the dependency handler):
+```bash
+pwsh -c 'Invoke-PSDepend -Confirm:$false'
+```
+
+Then run:
+```bash
+# index.ps1
+$ ls
+Dockerfile        README.md         ci                function-template index.ps1         requirements.psd1 version.txt
+LICENSE           build.sh          function          image-template    index.tests.ps1   validator
+$ pwsh -c 'Invoke-Pester -EnableExit -Strict'
+
+# validator.ps1
+$ cd validator
+$ pwsh -c 'Invoke-Pester -EnableExit -Strict'
+```

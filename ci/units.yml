@@ -1,0 +1,24 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: dispatchframework/powershell-ci
+    tag: "0.0.1"
+
+inputs:
+- name: base-image
+
+run:
+  path: /bin/bash
+  args:
+  - -c
+  - |
+    set -e -x -u
+
+    cd base-image
+    pwsh -c 'Invoke-PSDepend -Confirm:$false; Invoke-Pester -EnableExit -Strict'
+
+    cd validator
+    pwsh -c 'Invoke-Pester -EnableExit -Strict'
