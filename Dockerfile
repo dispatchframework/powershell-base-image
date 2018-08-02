@@ -30,7 +30,7 @@ COPY function-template ${FUNCTION_TEMPLATE}/
 
 COPY validator /root/validator/
 
-ENV WORKDIR=/root/function PORT=8080 SERVERS=$servers FUNKY_VERSION=0.1.1
+ENV WORKDIR=/root/function PORT=8080 SERVERS=$servers FUNKY_VERSION=0.1.2
 EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
 
