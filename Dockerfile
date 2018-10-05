@@ -13,14 +13,15 @@ RUN mv /powershell/PSDepend/0.1.64/PSDependScripts/Noop.ps1 /powershell/PSDepend
 
 
 ## base image
-FROM vmware/photon2:20180424
+FROM vmware/photon2:latest
 
 RUN tdnf install -y powershell-6.0.1-1.ph2 gzip tar
 COPY --from=builder /powershell/ /root/.local/share/powershell/Modules/
 
 ARG IMAGE_TEMPLATE=/image-template
 ARG FUNCTION_TEMPLATE=/function-template
-ARG servers=1
+ARG SERVERS=1
+ARG FUNKY_VERSION
 
 LABEL io.dispatchframework.imageTemplate="${IMAGE_TEMPLATE}" \
       io.dispatchframework.functionTemplate="${FUNCTION_TEMPLATE}"
@@ -30,7 +31,7 @@ COPY function-template ${FUNCTION_TEMPLATE}/
 
 COPY validator /root/validator/
 
-ENV WORKDIR=/root/function PORT=8080 SERVERS=$servers FUNKY_VERSION=0.1.2
+ENV WORKDIR=/root/function PORT=8080 SERVERS=$SERVERS TIMEOUT=300
 EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
 

@@ -5,8 +5,10 @@ set -e -x
 
 cd $(dirname $0)
 
-IMAGE=${DOCKER_REGISTRY}/powershell-base:$(cat version.txt)
-docker build -t ${IMAGE} .
+FUNKY_VERSION=$(jq -r .funky < version.json)
+
+IMAGE=${DOCKER_REGISTRY}/powershell-base:$(jq -r .tag < version.json)
+docker build -t ${IMAGE} --build-arg=FUNKY_VERSION=${FUNKY_VERSION} .
 if [ -n "$PUSH" ]; then
     docker push ${IMAGE}
 fi
